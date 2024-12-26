@@ -1,0 +1,207 @@
+directive @lazy on FIELD_DEFINITION
+
+schema {
+  query: Query
+}
+
+type Query {
+  # node queries
+  """
+  Find person by ID
+  """
+  person(id: ID!): Person
+  """
+  Find company by ID
+  """
+  company(id: ID!): Company
+  """
+  Find article by ID
+  """
+  article(id: ID!): Article
+  """
+  returns current user(if any)
+  """
+  viewer: Viewer
+  me: Account
+}
+
+# General Purpose types and interfaces
+
+"""
+Connection interface from Relay(https://github.com/facebook/relay)
+"""
+interface Connection {
+  edges: [Edge!]!
+}
+
+"""
+Edge interface from Relay(https://github.com/facebook/relay)
+"""
+interface Edge {
+  node: Node
+}
+
+"""
+Node interface from Relay(https://github.com/facebook/relay)
+"""
+interface Node {
+  id: ID!
+}
+
+"""
+Viewer type from Relay(https://github.com/facebook/relay)
+"""
+type Viewer {
+  name: String!
+}
+
+"""
+PageInfo type from Relay(https://github.com/facebook/relay)
+"""
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+enum SortOrder {
+    ASCENDING
+    DESCENDING
+}
+
+# Primitives
+type Price {
+  """
+  arbitrarily large number
+  """
+  value: String!
+  unit: Currency!
+}
+
+enum Currency {
+  Yen
+  Dollar
+}
+
+# Interfaces
+
+"""
+Anything that can behave as an axis for content aggregation.
+Imagine `#hashtag` for example.
+Content could be not only articles but also topics, theme or group.
+"""
+union TaxonomyHint = Company | Person
+
+"""
+Anything that can aggregate articles such as authors or topics.
+"""
+interface ArticleAggregation {
+  articles: ArticleConnection! @lazy
+}
+
+# Entities
+
+## Entities:Account
+
+type Account implements Node {
+  id: ID!
+  contact: Contact
+}
+
+## Entities:Article
+"""
+Article
+"""
+type Article implements Node {
+  id: ID!
+  """
+  Title of this article
+  """
+  title: String!
+  """
+  When this article is published
+  """
+  publishedAt: String!
+  revision: [Revision!]!
+  """
+  Abstract of this article
+  """
+  abstract: String!
+  authors: [Person!]
+  taxonomyHints: [TaxonomyHint!]!
+}
+
+type Revision {
+  updatedAt: String!
+  description: String!
+  data: String!
+}
+
+type ArticleConnection implements Connection {
+  edges: [ArticleEdge!]!
+  pageInfo: PageInfo
+  summary: String
+}
+
+type ArticleEdge implements Edge {
+  node: Article
+  cursor: String
+}
+
+type ArticleOrdering {
+    relevance: SortOrder!
+    recency: SortOrder!
+}
+
+# Entities:Company
+"""
+Company
+"""
+type Company implements Node & ArticleAggregation {
+  id: ID!
+  """
+  Name of this company
+  """
+  name: String!
+  """
+  Primary contact for this company
+  """
+  primaryContact: Contact @lazy
+  """
+  Business description of this article
+  """
+  businessDescription: String
+  articles: ArticleConnection! @lazy
+  financialReports: [FinancialReport!]!
+}
+
+
+# Entities:FinancialReport
+type FinancialReport {
+  id: ID!
+  season: String
+  sales: Price
+  operatingProfit: Price
+  ordinaryProfit: Price
+}
+
+# Entities:Person
+type Person implements Node & ArticleAggregation {
+  id: ID!
+  fullName: String!
+  """
+  Articles written by this person
+  """
+  articles: ArticleConnection! @lazy
+}
+
+"""
+Contact information
+"""
+type Contact {
+  id: ID!
+  emailAddress: String
+  phoneNumber: String
+  address: String
+}
